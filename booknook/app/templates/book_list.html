@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if is_home %}
+    <h2 style="margin-bottom: 1rem;">Featured Books</h2>
+    {% if stats %}
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="text-align: center;">
+            <h3>{{ stats.available_books }}</h3>
+            <p>Books Available</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3>{{ stats.total_users }}</h3>
+            <p>Members</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3>{{ stats.total_reservations }}</h3>
+            <p>Reservations</p>
+        </div>
+    </div>
+    {% endif %}
+{% elif show_reservations %}
+    <h2 style="margin-bottom: 1rem;">My Reservations</h2>
+    {% if reservations %}
+        {% for res in reservations %}
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3><a href="{{ url_for('book_detail', book_id=res.book_id) }}">{{ res.book.title }}</a></h3>
+                    <p>Status: <span class="badge badge-{{ res.status }}">{{ res.status }}</span></p>
+                    <p>Reserved: {{ res.created_at.strftime('%d %b %Y, %H:%M') if res.created_at else '' }}</p>
+                    {% if res.expires_at %}
+                        <p>Expires: {{ res.expires_at.strftime('%d %b %Y, %H:%M') }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <p style="font-size: 1.5rem; font-weight: bold;">{{ format_price(res.book.price) }}</p>
+                    {% if res.status == 'pending' %}
+                        <form method="POST" action="{{ url_for('cancel_reservation', res_id=res.id) }}" style="margin-top: 8px;">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card"><p>No reservations yet. <a href="{{ url_for('book_list') }}">Browse books</a> to get started!</p></div>
+    {% endif %}
+{% else %}
+    <!-- Zoek- en filteropties -->
+    {% if categories is defined %}
+    <div class="card" style="margin-bottom: 1rem;">
+        <form method="GET" action="{{ url_for('book_list') }}" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end;">
+            <div class="form-group" style="flex: 2;">
+                <label>Search</label>
+                <input type="text" name="q" value="{{ query|default('') }}" placeholder="Search by title or author...">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Category</label>
+                <select name="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {{ 'selected' if category == cat else '' }}>{{ cat|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Sort by</label>
+                <select name="sort">
+                    <option value="created_at">Newest</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="title">Title A-Z</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <h2 style="margin-bottom: 1rem;">{{ page_title|default('Books') }}</h2>
+
+    <div class="grid">
+        {% for book in books %}
+        <div class="card">
+            <h3 style="margin-bottom: 8px;">
+                <a href="{{ url_for('book_detail', book_id=book.id) }}" style="color: #2c3e50; text-decoration: none;">
+                    {{ book.title }}
+                </a>
+            </h3>
+            <p style="color: #666;">by {{ book.author }}</p>
+            <p style="margin: 8px 0;">
+                <span class="badge badge-{{ book.status }}">{{ book.status }}</span>
+                <span style="margin-left: 8px; color: #666;">{{ book.condition }}</span>
+            </p>
+            {% if book.category %}
+                <p style="color: #888; font-size: 12px;">{{ book.category|capitalize }}</p>
+            {% endif %}
+            <p style="font-size: 1.3rem; font-weight: bold; color: #27ae60; margin-top: 8px;">
+                {{ format_price(book.price) }}
+            </p>
+            <!-- N+1: hier wordt book.seller lazy-loaded per boek -->
+            <p style="font-size: 12px; color: #888; margin-top: 4px;">
+                Sold by {{ book.seller.username if book.seller else 'Unknown' }}
+            </p>
+        </div>
+        {% else %}
+        <div class="card" style="grid-column: 1 / -1;">
+            <p>No books found. {% if query %}Try a different search term.{% endif %}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if pagination is defined and pagination %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+            <a href="?page={{ pagination.prev_num }}{% if query %}&q={{ query }}{% endif %}">← Previous</a>
+        {% endif %}
+        <span style="padding: 8px 12px;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+            <a href="?page={{ pagination.next_num }}{% if query %}&q={{ query }}{% endif %}">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

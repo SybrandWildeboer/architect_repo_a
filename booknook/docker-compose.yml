@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app
+      - FLASK_ENV=development
+      - DATABASE_URL=sqlite:///booknook.db
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ADMIN_EMAIL=admin@booknook.nl
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python seed.py && flask run --host=0.0.0.0"

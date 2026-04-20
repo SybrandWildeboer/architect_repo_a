@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title|default('BookNook') }} - {{ site_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        header { background: #2c3e50; color: white; padding: 1rem 0; }
+        header .container { display: flex; justify-content: space-between; align-items: center; }
+        header h1 a { color: white; text-decoration: none; }
+        nav a { color: #ecf0f1; text-decoration: none; margin-left: 20px; }
+        nav a:hover { color: #3498db; }
+        main { padding: 2rem 0; min-height: 60vh; }
+        .flash { padding: 10px 20px; margin-bottom: 1rem; border-radius: 4px; }
+        .flash-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .flash-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 4px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+        footer { background: #2c3e50; color: #ecf0f1; padding: 2rem 0; margin-top: 2rem; text-align: center; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .badge-available { background: #27ae60; color: white; }
+        .badge-reserved { background: #f39c12; color: white; }
+        .badge-sold { background: #95a5a6; color: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; }
+        .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 2rem; }
+        .pagination a { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; }
+        .pagination a.active { background: #3498db; color: white; border-color: #3498db; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="{{ url_for('index') }}">📚 {{ site_name }}</a></h1>
+            <nav>
+                <a href="{{ url_for('book_list') }}">Browse</a>
+                {% if current_user %}
+                    <a href="{{ url_for('create_book') }}">Sell a Book</a>
+                    <a href="{{ url_for('my_reservations') }}">My Reservations</a>
+                    <a href="{{ url_for('profile') }}">{{ current_user.username }}</a>
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Login</a>
+                    <a href="{{ url_for('register') }}">Register</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% if show_login %}
+            <div class="card" style="max-width: 400px; margin: 2rem auto;">
+                <h2>Login</h2>
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <p style="margin-top: 1rem;">Don't have an account? <a href="{{ url_for('register') }}">Register</a></p>
+            </div>
+        {% elif show_register %}
+            <div class="card" style="max-width: 400px; margin: 2rem auto;">
+                <h2>Create Account</h2>
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" name="password_confirm" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Register</button>
+                </form>
+            </div>
+        {% elif show_profile %}
+            <div class="card">
+                <h2>Profile: {{ user.username }}</h2>
+                <p>Email: {{ user.email }}</p>
+                <p>Member since: {{ user.created_at.strftime('%d %b %Y') if user.created_at else 'Unknown' }}</p>
+                {% if seller_rating %}
+                    <p>Seller Rating: {{ seller_rating }}/5 ⭐</p>
+                {% endif %}
+                <h3 style="margin-top: 1rem;">My Books ({{ my_books|length }})</h3>
+                {% for book in my_books %}
+                    <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <a href="{{ url_for('book_detail', book_id=book.id) }}">{{ book.title }}</a>
+                        - {{ format_price(book.price) }}
+                        <span class="badge badge-{{ book.status }}">{{ book.status }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% block content %}{% endblock %}
+        {% endif %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>{{ site_name }} - De online tweedehands boekenmarkt</p>
+            <p>{{ site_stats.total_books }} books available | {{ site_stats.total_users }} members</p>
+            <p>Contact: {{ admin_email }}</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

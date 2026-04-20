@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if editing %}
+    <!-- Formulier voor nieuw boek of bewerken -->
+    <div class="card" style="max-width: 600px; margin: 0 auto;">
+        <h2>{{ 'Edit Book' if book else 'Sell a Book' }}</h2>
+        <form method="POST" action="{{ url_for('create_book') }}">
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" name="title" required minlength="2"
+                       value="{{ book.title if book else '' }}">
+            </div>
+            <div class="form-group">
+                <label>Author *</label>
+                <input type="text" name="author" required
+                       value="{{ book.author if book else '' }}">
+            </div>
+            <div class="form-group">
+                <label>ISBN (optional)</label>
+                <input type="text" name="isbn"
+                       value="{{ book.isbn if book else '' }}"
+                       placeholder="978-0-123456-78-9">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="4">{{ book.description if book else '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Price (€) *</label>
+                <input type="number" name="price" step="0.01" min="0.50" max="500" required
+                       value="{{ book.price if book else '' }}">
+            </div>
+            <div class="form-group">
+                <label>Condition *</label>
+                <select name="condition" required>
+                    <option value="">Select condition...</option>
+                    {% for cond in conditions %}
+                        <option value="{{ cond }}" {{ 'selected' if book and book.condition == cond else '' }}>
+                            {{ cond|capitalize }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category">
+                    <option value="other">Select category...</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {{ 'selected' if book and book.category == cat else '' }}>
+                            {{ cat|capitalize }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                {{ 'Update Book' if book else 'List Book for Sale' }}
+            </button>
+        </form>
+    </div>
+{% else %}
+    <!-- Boek detail weergave -->
+    <div class="card">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h1>{{ book.title }}</h1>
+                <p style="font-size: 1.1rem; color: #666; margin-bottom: 1rem;">by {{ book.author }}</p>
+
+                {% if book.isbn %}
+                    <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+                {% endif %}
+                <p><strong>Condition:</strong> {{ book.condition|capitalize }}</p>
+                <p><strong>Category:</strong> {{ book.category|capitalize if book.category else 'Other' }}</p>
+                <p><strong>Listed:</strong> {{ time_ago(book.created_at) if time_ago else book.created_at }}</p>
+                <p><strong>Views:</strong> {{ book.views_count or 0 }}</p>
+
+                {% if book.description %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                        <p>{{ book.description }}</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div style="text-align: right;">
+                <p style="font-size: 2rem; font-weight: bold; color: #27ae60;">
+                    {{ format_price(book.price) }}
+                </p>
+                <p><span class="badge badge-{{ book.status }}">{{ book.status }}</span></p>
+
+                <div style="margin-top: 2rem;">
+                    <!-- Verkoper info -->
+                    <div style="padding: 1rem; background: #f8f9fa; border-radius: 4px; text-align: left;">
+                        <p><strong>Seller:</strong> {{ book.seller.username if book.seller else 'Unknown' }}</p>
+                        {% if seller_rating %}
+                            <p>Rating: {{ seller_rating }}/5 ⭐</p>
+                        {% else %}
+                            <p style="color: #888;">No ratings yet</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if current_user and book.status == 'available' and book.seller_id != current_user.id %}
+                    {% if not has_reservation %}
+                        <form method="POST" action="{{ url_for('reserve_book', book_id=book.id) }}" style="margin-top: 1rem;">
+                            <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
+                                Reserve This Book
+                            </button>
+                        </form>
+                    {% else %}
+                        <p style="margin-top: 1rem; color: #f39c12;"><strong>You have already reserved this book</strong></p>
+                    {% endif %}
+                {% elif not current_user and book.status == 'available' %}
+                    <p style="margin-top: 1rem;"><a href="{{ url_for('login') }}">Login</a> to reserve this book</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if recommendations %}
+    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">You might also like</h3>
+    <div class="grid">
+        {% for rec in recommendations %}
+        <div class="card">
+            <h4><a href="{{ url_for('book_detail', book_id=rec.id) }}">{{ rec.title }}</a></h4>
+            <p style="color: #666;">{{ rec.author }}</p>
+            <p style="font-weight: bold; color: #27ae60;">{{ format_price(rec.price) }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
