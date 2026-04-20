@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 250px 1fr; gap: 2rem;">
+    <!-- Sidebar -->
+    <div>
+        <div class="card">
+            <h3>Admin Panel</h3>
+            <nav style="margin-top: 1rem;">
+                <a href="{{ url_for('admin.dashboard') }}" style="display: block; padding: 8px 0;">Dashboard</a>
+                <a href="{{ url_for('admin.manage_books') }}" style="display: block; padding: 8px 0;">Books</a>
+                <a href="{{ url_for('admin.manage_users') }}" style="display: block; padding: 8px 0;">Users</a>
+                <a href="{{ url_for('admin.manage_reservations') }}" style="display: block; padding: 8px 0;">Reservations</a>
+                <a href="{{ url_for('admin.stats') }}" style="display: block; padding: 8px 0;">Statistics</a>
+                <a href="{{ url_for('admin.activity_log') }}" style="display: block; padding: 8px 0;">Activity Log</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div>
+        {% if show_books %}
+            <h2>Manage Books</h2>
+            <div style="margin: 1rem 0;">
+                <a href="{{ url_for('admin.manage_books') }}" class="btn btn-primary">All</a>
+                <a href="{{ url_for('admin.manage_books', status='available') }}" class="btn btn-success">Available</a>
+                <a href="{{ url_for('admin.manage_books', status='reserved') }}" class="btn btn-primary" style="background: #f39c12;">Reserved</a>
+                <a href="{{ url_for('admin.manage_books', status='sold') }}" class="btn btn-danger" style="background: #95a5a6;">Sold</a>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Title</th><th>Author</th><th>Price</th><th>Status</th><th>Featured</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for book in books.items if books %}
+                    <tr>
+                        <td><a href="{{ url_for('book_detail', book_id=book.id) }}">{{ book.title }}</a></td>
+                        <td>{{ book.author }}</td>
+                        <td>{{ format_price(book.price) }}</td>
+                        <td><span class="badge badge-{{ book.status }}">{{ book.status }}</span></td>
+                        <td>{{ '⭐' if book.featured else '' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin.toggle_featured', book_id=book.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-primary" style="padding: 4px 8px; font-size: 12px;">
+                                    {{ 'Unfeature' if book.featured else 'Feature' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.delete_book', book_id=book.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;"
+                                        onclick="return confirm('Delete this book?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif show_users %}
+            <h2>Manage Users</h2>
+            <table>
+                <thead>
+                    <tr><th>Username</th><th>Email</th><th>Books</th><th>Reservations</th><th>Admin</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in users %}
+                    <tr>
+                        <td>{{ item.user.username }}</td>
+                        <td>{{ item.user.email }}</td>
+                        <td>{{ item.book_count }}</td>
+                        <td>{{ item.reservation_count }}</td>
+                        <td>{{ '✅' if item.user.is_admin else '' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=item.user.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-primary" style="padding: 4px 8px; font-size: 12px;">
+                                    {{ 'Remove Admin' if item.user.is_admin else 'Make Admin' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif show_reservations %}
+            <h2>Manage Reservations</h2>
+            <div style="margin: 1rem 0;">
+                <a href="{{ url_for('admin.manage_reservations') }}" class="btn btn-primary">All</a>
+                <a href="{{ url_for('admin.manage_reservations', status='pending') }}" class="btn btn-primary" style="background: #f39c12;">Pending</a>
+                <a href="{{ url_for('admin.manage_reservations', status='confirmed') }}" class="btn btn-success">Confirmed</a>
+                <a href="{{ url_for('admin.manage_reservations', status='cancelled') }}" class="btn btn-danger">Cancelled</a>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Book</th><th>User</th><th>Status</th><th>Created</th><th>Expires</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for res in reservations %}
+                    <tr>
+                        <td>{{ res.book.title if res.book else 'Unknown' }}</td>
+                        <td>{{ res.user.username if res.user else 'Unknown' }}</td>
+                        <td><span class="badge badge-{{ res.status }}">{{ res.status }}</span></td>
+                        <td>{{ res.created_at.strftime('%d %b %Y') if res.created_at else '' }}</td>
+                        <td>{{ res.expires_at.strftime('%d %b %Y') if res.expires_at else '-' }}</td>
+                        <td>
+                            {% if res.status == 'pending' %}
+                                <form method="POST" action="{{ url_for('admin.confirm_reservation', res_id=res.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-success" style="padding: 4px 8px; font-size: 12px;">Confirm</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif show_stats %}
+            <h2>Statistics</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div class="card" style="text-align: center;">
+                    <h3>{{ stats.total_books }}</h3><p>Total Books</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>{{ stats.available_books }}</h3><p>Available</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>€{{ stats.total_revenue }}</h3><p>Revenue</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Books by Category</h3>
+                {% for cat, count in categories.items() %}
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                        <span>{{ cat|capitalize }}</span>
+                        <span>{{ count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+
+        {% elif show_activity %}
+            <h2>Activity Log</h2>
+            <table>
+                <thead>
+                    <tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr>
+                </thead>
+                <tbody>
+                    {% for log in logs.items if logs %}
+                    <tr>
+                        <td>{{ log.created_at.strftime('%d %b %H:%M') if log.created_at else '' }}</td>
+                        <td>{{ log.user.username if log.user else 'System' }}</td>
+                        <td>{{ log.action }}</td>
+                        <td>{{ log.details|truncate(50) if log.details else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% else %}
+            <!-- Dashboard overview -->
+            <h2>Dashboard</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div class="card" style="text-align: center;">
+                    <h3>{{ stats.total_books }}</h3><p>Total Books</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>{{ stats.total_users }}</h3><p>Users</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>{{ stats.pending_reservations }}</h3><p>Pending Reservations</p>
+                </div>
+            </div>
+
+            {% if payment_info %}
+            <div class="card">
+                <h3>Payment Overview</h3>
+                <p>Active holds: {{ payment_info.active_holds }} (€{{ payment_info.total_held_amount }})</p>
+                <p>Captured: {{ payment_info.total_captured }} (€{{ payment_info.total_captured_amount }})</p>
+            </div>
+            {% endif %}
+
+            {% if top_sellers %}
+            <div class="card">
+                <h3>Top Sellers</h3>
+                {% for seller in top_sellers %}
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                        <span>{{ seller.username }}</span>
+                        <span>{{ seller.count }} sold</span>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if recent_activity %}
+            <div class="card">
+                <h3>Recent Activity</h3>
+                {% for log in recent_activity[:10] %}
+                    <div style="padding: 4px 0; border-bottom: 1px solid #eee; font-size: 13px;">
+                        <strong>{{ log.action }}</strong> -
+                        {{ log.details|truncate(40) if log.details else '' }}
+                        <span style="color: #888;">{{ log.created_at.strftime('%H:%M') if log.created_at else '' }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
